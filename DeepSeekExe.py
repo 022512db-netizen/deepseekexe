@@ -25,7 +25,8 @@ WORKSPACE = r"C:\Users\asus\Desktop\deepseek"                    # 工作目录 
 SESSIONS_SRC = os.path.join(os.environ.get("USERPROFILE", ""), ".dsh", "sessions")
 SESSIONS_DST = os.path.join(WORKSPACE, "sessions")               # 仓库内的会话镜像目录
 REMOTE_URL = "https://github.com/022512db-netizen/deepseekexe.git"
-WEB_URL = "http://127.0.0.1:3080"
+PORT = int(os.environ.get("DSHEXE_PORT", "3080"))                # 可用环境变量覆盖(测试用)
+WEB_URL = "http://127.0.0.1:%d" % PORT
 BRANCH = "main"
 DSH_ENTRY = r"C:\Users\asus\AppData\Local\npm-cache\_npx\1e7f6d9597241db0\node_modules\@deepseek-ai\dsh\lib\bin.js"
 NODE_BIN = shutil.which("node") or "node"
@@ -57,7 +58,7 @@ class DeepSeekApp:
             return
         try:
             self.server_proc = subprocess.Popen(
-                [NODE_BIN, DSH_ENTRY, "web"],
+                [NODE_BIN, DSH_ENTRY, "web", "--port", str(PORT)],
                 cwd=WORKSPACE,
                 creationflags=subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP,
             )
@@ -199,9 +200,10 @@ def main():
     window.events.closing += app.on_closing
 
     menu = [
-        webview.Menu("文件", [
-            webview.MenuAction("保存并推送", app.on_save, accelerator="Ctrl+S"),
-            webview.MenuAction("退出", lambda: window.destroy()),
+        webview.menu.Menu("文件", [
+            webview.menu.MenuAction("保存并推送", app.on_save),
+            webview.menu.MenuSeparator(),
+            webview.menu.MenuAction("退出", lambda: window.destroy()),
         ]),
     ]
 
