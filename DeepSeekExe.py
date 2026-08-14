@@ -186,6 +186,15 @@ def json_dumps(text):
     return json.dumps(str(text), ensure_ascii=False)
 
 
+def resource_path(name):
+    """兼容打包(exe)与源码运行两种模式的资源路径。"""
+    base = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base, name)
+
+
+ICON_PATH = resource_path(os.path.join("assets", "deepseek.ico"))
+
+
 def main():
     app = DeepSeekApp()
     app.start_server()
@@ -207,7 +216,8 @@ def main():
         ]),
     ]
 
-    webview.start(func=app.on_started, menu=menu, debug=False)
+    webview.start(func=app.on_started, menu=menu, debug=False,
+                  icon=ICON_PATH if os.path.isfile(ICON_PATH) else None)
 
 
 if __name__ == "__main__":
