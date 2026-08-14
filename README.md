@@ -5,9 +5,10 @@ DeepSeek 独立桌面 App(类似 Codex 的独立运行形态)——把 DeepSeek 
 ## 功能
 
 1. **独立窗口运行** — 用 pywebview(Edge WebView2)内嵌 dsh web 界面,UI 与功能跟网页版完全一致;引擎随 App 启动,关闭窗口即自动停止内部服务器
-2. **保存并推送** — 菜单「文件 → 保存并推送」(或手动触发),把工作目录中的文件 commit 并 push 到远程仓库
+2. **纯本地运行** — App 不联网、不上传任何数据;会话记录与 API Key 只保存在本机
+3. **更新方式** — App 自身不更新;源码在本仓库维护,重新打包后分发(替换 `DeepSeekExe.exe` 即可)
 
-> ⚠️ **安全说明**:会话记录默认**不**备份到仓库——会话日志包含 API Key、token、密码等敏感信息,曾因此发生过密钥泄露。如需备份会话,请先确保仓库为**私有**,并设置环境变量 `DSHEXE_BACKUP_SESSIONS=1` 启用(启用后 App 仍会逐文件扫描密钥模式,命中即拦截)。
+> 🔒 **安全说明**:App 内**没有**推送/上传功能(历史版本曾有"保存并推送",因会话日志含密钥曾泄露,已移除)。
 
 ## 目录结构
 
@@ -27,12 +28,12 @@ deepseek/
 ```
 DeepSeekExe-portable/
 ├── DeepSeekExe.exe    # 双击运行
-├── runtime/           # 内置 node + dsh 引擎(255MB, 不入库)
+├── runtime/           # 内置 node + dsh 引擎(255MB)
 └── 使用说明.txt
 ```
 
-把整个文件夹拷到任何 Windows 10/11 电脑双击即用——**无需安装 Node.js 和 dsh**。
-目标机仍需:git + GitHub 凭据(用于保存推送)。详见便携版内「使用说明.txt」。
+把整个文件夹拷到任何 Windows 10/11 电脑双击即用——**无需安装 Node.js、dsh、git**。
+新版分发:替换 `DeepSeekExe.exe` 一个文件即可(runtime 不用动)。
 
 ## 使用方式
 
@@ -46,32 +47,25 @@ python DeepSeekExe.py
 
 双击 `dist\DeepSeekExe.exe` 即可(单文件,无控制台窗口)。
 
-### 保存并推送
-
-在 App 菜单「文件 → 保存并推送」,执行:
-
-1. (默认跳过)会话记录备份——默认不备份,显式启用 `DSHEXE_BACKUP_SESSIONS=1` 时才同步到 `sessions/` 目录(带密钥扫描)
-2. 检查/初始化 git 仓库
-3. 提交工作目录全部改动(提交信息:自动保存 <时间>)
-4. 推送到 `https://github.com/022512db-netizen/deepseekexe.git` 的 `main` 分支
-5. 弹出提示框显示结果
-
 ## 重新打包
 
 ```powershell
+# 单 exe
 python -m PyInstaller --onefile --windowed --name DeepSeekExe ^
   --collect-all webview --collect-all pythonnet --collect-all clr_loader ^
   --icon assets\deepseek.ico --add-data "assets\deepseek.ico;assets" ^
   --distpath dist --workpath build --specpath . DeepSeekExe.py
+
+# 便携版(打包 + 组装 runtime)
+powershell -ExecutionPolicy Bypass -File build_portable.ps1
 ```
 
 产物在 `dist\DeepSeekExe.exe`。图标使用官方 DeepSeek 鲸鱼(`assets\deepseek.ico`)。
 
 ## 依赖
 
-- `dsh`(`@deepseek-ai/dsh`,引擎,随 App 内嵌启动)
-- `git` + GitHub 凭据(`git config --global credential.helper store`)
-- Python 3.8+ 与 `pywebview`(仅运行源码时需要;exe 不需要)
+- 便携模式:内置 `runtime/`(node + dsh),零外部依赖
+- 源码模式:`dsh`(`@deepseek-ai/dsh`) + Python 3.8+ 与 `pywebview`
 - Windows 10/11 自带 Edge WebView2 运行时(Windows 11 已内置)
 
 ## 配置
@@ -80,7 +74,6 @@ python -m PyInstaller --onefile --windowed --name DeepSeekExe ^
 
 | 配置项 | 默认值 | 说明 |
 |---|---|---|
-| `WORKSPACE` | `C:\Users\asus\Desktop\deepseek` | 工作目录 = 本地 git 仓库 |
-| `REMOTE_URL` | `https://github.com/022512db-netizen/deepseekexe.git` | 远程仓库地址 |
+| `WORKSPACE` | App 所在目录 | 工作区(可用环境变量 `DSHEXE_WORKSPACE` 覆盖) |
 | `PORT` | `3080` | 内嵌服务器端口(可用环境变量 `DSHEXE_PORT` 覆盖) |
-| `BRANCH` | `main` | 推送分支 |
+| `DSHEXE_DSH_ENTRY` | 自动查找 | 手动指定 dsh 的 lib/bin.js 路径 |
