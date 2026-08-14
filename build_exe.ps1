@@ -15,6 +15,7 @@ python -m PyInstaller --onefile --windowed --name DeepSeekExe `
     --collect-all webview --collect-all pythonnet --collect-all clr_loader `
     --icon "$Workspace\assets\deepseek.ico" `
     --add-data "$Workspace\assets\deepseek.ico;assets" `
+    --add-data "$Workspace\assets\vision_skill;assets\vision_skill" `
     --distpath "$Workspace\dist" --workpath "$Workspace\build" `
     --specpath "$Workspace" "$Workspace\DeepSeekExe.py"
 if ($LASTEXITCODE -ne 0) { throw "PyInstaller 打包失败" }

@@ -31,6 +31,11 @@ Write-Host "  dsh 引擎来源: $($dshSrc.FullName)"
 robocopy $dshSrc.FullName "$portable\runtime\dsh" /E /NFL /NDL /NJH /NJS /NP | Out-Null
 if ($LASTEXITCODE -ge 8) { throw "robocopy 拷贝 dsh 失败" }
 
+# Enable image attachment input on the bundled DeepSeek route. Non-vision DeepSeek
+# calls receive an instruction to use the globally installed vision fallback skill.
+python "$Workspace\patch_dsh_image_input.py" $portable
+if ($LASTEXITCODE -ne 0) { throw "DSH 图片输入补丁失败" }
+
 Write-Host "== 3/3 拷贝 exe ==" -ForegroundColor Cyan
 Copy-Item "$Workspace\dist\DeepSeekExe.exe" "$portable\" -Force
 $size = [math]::Round((Get-ChildItem $portable -Recurse -File | Measure-Object Length -Sum).Sum/1MB, 1)
