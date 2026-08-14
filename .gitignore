@@ -8,6 +8,9 @@ build/
 dist/
 *.spec
 
+# ⚠️ 会话记录: 含 API Key 等敏感信息,严禁提交到仓库(历史曾泄露过密钥)
+sessions/
+
 # 临时文件
 *.log
 .DS_Store

@@ -24,6 +24,9 @@ import webview
 WORKSPACE = r"C:\Users\asus\Desktop\deepseek"                    # 工作目录 = 本地 git 仓库
 SESSIONS_SRC = os.path.join(os.environ.get("USERPROFILE", ""), ".dsh", "sessions")
 SESSIONS_DST = os.path.join(WORKSPACE, "sessions")               # 仓库内的会话镜像目录
+# 安全开关: 默认不备份会话(会话日志含 API Key 等敏感信息, 曾导致密钥泄露)。
+# 如确需备份, 设环境变量 DSHEXE_BACKUP_SESSIONS=1 启用(启用后仍会做密钥扫描拦截)。
+SESSIONS_BACKUP = os.environ.get("DSHEXE_BACKUP_SESSIONS") == "1"
 REMOTE_URL = "https://github.com/022512db-netizen/deepseekexe.git"
 PORT = int(os.environ.get("DSHEXE_PORT", "3080"))                # 可用环境变量覆盖(测试用)
 WEB_URL = "http://127.0.0.1:%d" % PORT
@@ -101,8 +104,30 @@ class DeepSeekApp:
             return False
 
     # ---------- 保存并推送 ----------
+    SECRET_PATTERNS = [
+        r"gho_[A-Za-z0-9_]{20,}", r"ghp_[A-Za-z0-9_]{20,}",
+        r"github_pat_[A-Za-z0-9_]{30,}", r"sk-[A-Za-z0-9_-]{15,}",
+        r"(?i)bearer\s+[A-Za-z0-9._-]{10,}",
+        r"(?i)(api[_-]?key|apikey|secret|password)\s*[:=]\s*\S+",
+    ]
+
+    def _session_contains_secret(self, path):
+        """解压会话文件并扫描密钥模式(防止把密钥推上远程)。"""
+        import re
+        try:
+            import zstandard
+            with open(path, "rb") as fh:
+                with zstandard.ZstdDecompressor().stream_reader(fh) as r:
+                    txt = r.read().decode("utf-8", "replace")
+        except Exception:  # noqa: BLE001
+            return False  # 解压失败不阻断(保持原行为)
+        for pat in self.SECRET_PATTERNS:
+            if re.search(pat, txt):
+                return True
+        return False
+
     def save_and_push(self):
-        """把会话记录与工作目录文件 commit 并 push 到远程仓库。"""
+        """把工作目录文件 commit 并 push 到远程仓库(默认不含会话记录)。"""
         with self._save_lock:
             lines = []
 
@@ -116,14 +141,27 @@ class DeepSeekApp:
                 except Exception as e:  # noqa: BLE001
                     return -1, str(e)
 
-            # 1. 同步会话记录
-            if os.path.isdir(SESSIONS_SRC):
-                if os.path.isdir(SESSIONS_DST):
-                    shutil.rmtree(SESSIONS_DST)
-                shutil.copytree(SESSIONS_SRC, SESSIONS_DST)
-                lines.append("会话已同步")
+            # 1. 会话记录: 默认跳过(安全); 显式启用时逐文件密钥扫描
+            if SESSIONS_BACKUP:
+                if os.path.isdir(SESSIONS_SRC):
+                    if os.path.isdir(SESSIONS_DST):
+                        shutil.rmtree(SESSIONS_DST)
+                    shutil.copytree(SESSIONS_SRC, SESSIONS_DST)
+                    skipped = []
+                    for root, _, files in os.walk(SESSIONS_DST):
+                        for fn in files:
+                            p = os.path.join(root, fn)
+                            if self._session_contains_secret(p):
+                                skipped.append(fn)
+                                os.remove(p)
+                    if skipped:
+                        lines.append("⚠️ 会话备份: %d 个文件含密钥已拦截: %s" % (len(skipped), ", ".join(skipped[:3])))
+                    else:
+                        lines.append("会话已同步(通过密钥扫描)")
+                else:
+                    lines.append("会话目录不存在,已跳过")
             else:
-                lines.append("会话目录不存在,已跳过")
+                lines.append("会话记录未备份(默认安全策略;设 DSHEXE_BACKUP_SESSIONS=1 可启用)")
 
             # 2. 确保 git 仓库与远程
             if not os.path.isdir(os.path.join(WORKSPACE, ".git")):

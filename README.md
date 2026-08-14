@@ -5,9 +5,9 @@ DeepSeek 独立桌面 App(类似 Codex 的独立运行形态)——把 DeepSeek 
 ## 功能
 
 1. **独立窗口运行** — 用 pywebview(Edge WebView2)内嵌 dsh web 界面,UI 与功能跟网页版完全一致;引擎随 App 启动,关闭窗口即自动停止内部服务器
-2. **保存并推送** — 菜单「文件 → 保存并推送」(或手动触发),把以下内容 commit 并 push 到远程仓库:
-   - 会话记录(`%USERPROFILE%\.dsh\sessions` → 本仓库 `sessions/` 目录)
-   - 工作目录中的全部文件
+2. **保存并推送** — 菜单「文件 → 保存并推送」(或手动触发),把工作目录中的文件 commit 并 push 到远程仓库
+
+> ⚠️ **安全说明**:会话记录默认**不**备份到仓库——会话日志包含 API Key、token、密码等敏感信息,曾因此发生过密钥泄露。如需备份会话,请先确保仓库为**私有**,并设置环境变量 `DSHEXE_BACKUP_SESSIONS=1` 启用(启用后 App 仍会逐文件扫描密钥模式,命中即拦截)。
 
 ## 目录结构
 
@@ -35,9 +35,9 @@ python DeepSeekExe.py
 
 在 App 菜单「文件 → 保存并推送」,执行:
 
-1. 把会话记录同步到 `sessions/` 目录
+1. (默认跳过)会话记录备份——默认不备份,显式启用 `DSHEXE_BACKUP_SESSIONS=1` 时才同步到 `sessions/` 目录(带密钥扫描)
 2. 检查/初始化 git 仓库
-3. 提交全部改动(提交信息:自动保存 <时间>)
+3. 提交工作目录全部改动(提交信息:自动保存 <时间>)
 4. 推送到 `https://github.com/022512db-netizen/deepseekexe.git` 的 `main` 分支
 5. 弹出提示框显示结果
 
