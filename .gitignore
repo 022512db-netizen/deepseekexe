@@ -11,6 +11,9 @@ dist/
 # ⚠️ 会话记录: 含 API Key 等敏感信息,严禁提交到仓库(历史曾泄露过密钥)
 sessions/
 
+# 测试版本地凭据（绝不提交）
+assets/test_opencode_key.txt
+
 # 临时文件
 *.log
 .DS_Store

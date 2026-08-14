@@ -33,6 +33,9 @@ VISION_SOURCE = resource_path(os.path.join("assets", "vision_skill"))
 DEFAULT_SKILLS_SOURCE = resource_path(os.path.join("assets", "default_skills"))
 VISION_HOME = os.path.join(os.path.expanduser("~"), ".dsh", "skills", "claude-vision-skill")
 DSH_SKILLS_HOME = os.path.join(os.path.expanduser("~"), ".dsh", "skills")
+DSH_HOME = os.environ.get("DSH_HOME") or os.path.join(os.path.expanduser("~"), ".dsh")
+TEST_OPENCODE_KEY_PATH = resource_path(os.path.join("assets", "test_opencode_key.txt"))
+TEST_OPENCODE_MODEL = "deepseek-v4-flash-free"
 
 SPLASH_HTML = """<!DOCTYPE html><html><head><meta charset="utf-8"><style>
 body{margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#1a1a2e;color:#eee;font-family:"Microsoft YaHei",sans-serif}
@@ -116,6 +119,41 @@ class DeepSeekApp:
                     if not os.path.isfile(target):
                         shutil.copy2(source, target)
 
+    def ensure_test_opencode_default(self):
+        """Test-build only: seed OpenCode Free without replacing user credentials."""
+        if not os.path.isfile(TEST_OPENCODE_KEY_PATH):
+            return
+        credentials_path = os.path.join(DSH_HOME, ".credentials.yaml")
+        os.makedirs(DSH_HOME, exist_ok=True)
+        try:
+            existing = open(credentials_path, encoding="utf-8").read() if os.path.isfile(credentials_path) else ""
+            if "OPENCODE_API_KEY:" not in existing:
+                key = open(TEST_OPENCODE_KEY_PATH, encoding="utf-8").read().strip()
+                if key:
+                    with open(credentials_path, "a", encoding="utf-8", newline="\n") as handle:
+                        if existing and not existing.endswith("\n"):
+                            handle.write("\n")
+                        handle.write('OPENCODE_API_KEY: "' + key + '"\n')
+        except OSError:
+            return
+
+        settings_path = os.path.join(DSH_HOME, "settings.yaml")
+        try:
+            settings = open(settings_path, encoding="utf-8").read() if os.path.isfile(settings_path) else ""
+            # Fresh users have no llm-pi-ai section. Seed the complete route once;
+            # existing advanced configurations remain untouched.
+            if "llm-pi-ai:" not in settings:
+                with open(settings_path, "a", encoding="utf-8", newline="\n") as handle:
+                    if settings and not settings.endswith("\n"):
+                        handle.write("\n")
+                    handle.write("llm-pi-ai:\n  providers:\n    opencode:\n      displayName: OpenCode Zen\n      apiKeyEnv: OPENCODE_API_KEY\n      api: openai-completions\n      baseURL: https://opencode.ai/zen/v1\n      models:\n        - id: deepseek-v4-flash-free\n          name: DeepSeek V4 Flash Free\n          contextWindow: 200000\n          maxTokens: 128000\n          input: [text]\n")
+                    settings += "\nllm-pi-ai:"
+            if "agent-default-model:" not in settings:
+                with open(settings_path, "a", encoding="utf-8", newline="\n") as handle:
+                    handle.write("agent-default-model:\n  provider: opencode\n  model: " + TEST_OPENCODE_MODEL + "\n")
+        except OSError:
+            pass
+
     def vision_configured(self):
         env_path = os.path.join(VISION_HOME, ".env")
         if not os.path.isfile(env_path):
@@ -144,6 +182,7 @@ class DeepSeekApp:
     def start_server(self):
         self.ensure_vision_skill()
         self.ensure_default_skills()
+        self.ensure_test_opencode_default()
         if self._is_web_up():
             self.started_by_us = False
             return
