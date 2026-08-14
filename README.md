@@ -46,10 +46,11 @@ python DeepSeekExe.py
 ```powershell
 python -m PyInstaller --onefile --windowed --name DeepSeekExe ^
   --collect-all webview --collect-all pythonnet --collect-all clr_loader ^
+  --icon assets\deepseek.ico --add-data "assets\deepseek.ico;assets" ^
   --distpath dist --workpath build --specpath . DeepSeekExe.py
 ```
 
-产物在 `dist\DeepSeekExe.exe`。
+产物在 `dist\DeepSeekExe.exe`。图标使用官方 DeepSeek 鲸鱼(`assets\deepseek.ico`)。
 
 ## 依赖
 
