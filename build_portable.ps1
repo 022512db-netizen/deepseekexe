@@ -1,22 +1,17 @@
-# ============================================================
+﻿# ============================================================
 # build_portable.ps1 — 重新构建 DeepSeekExe 便携版
-# 用法: powershell -ExecutionPolicy Bypass -File build_portable.ps1
+# 用法: powershell -ExecutionPolicy Bypass -File build_portable.ps1 [-Workspace <源码目录>]
 # 产物: C:\Users\asus\Desktop\DeepSeekExe-portable\
 # ============================================================
-$ErrorActionPreference = "Stop"
+param([string]$Workspace = "C:\Users\asus\Desktop\deepseek")
+$ErrorActionPreference = "Continue"  # 脚本用显式 throw + $LASTEXITCODE 检查, 避免 native stderr 中断
+$PSNativeCommandUseErrorActionPreference = $false  # python/git 的 stderr 信息不中断脚本
 
-$workspace = Split-Path -Parent $MyInvocation.MyCommand.Path
 $portable  = "C:\Users\asus\Desktop\DeepSeekExe-portable"
 $nodeExe   = (Get-Command node -ErrorAction SilentlyContinue).Source
 
 Write-Host "== 1/3 打包 exe ==" -ForegroundColor Cyan
-python -m PyInstaller --onefile --windowed --name DeepSeekExe `
-    --collect-all webview --collect-all pythonnet --collect-all clr_loader `
-    --icon "$workspace\assets\deepseek.ico" `
-    --add-data "$workspace\assets\deepseek.ico;assets" `
-    --distpath "$workspace\dist" --workpath "$workspace\build" `
-    --specpath "$workspace" "$workspace\DeepSeekExe.py"
-if ($LASTEXITCODE -ne 0) { throw "PyInstaller 打包失败" }
+& "$PSScriptRoot\build_exe.ps1" -Workspace $Workspace
 
 Write-Host "== 2/3 组装 runtime (node + dsh 引擎) ==" -ForegroundColor Cyan
 New-Item -ItemType Directory -Force -Path "$portable\runtime" | Out-Null
@@ -36,9 +31,8 @@ Write-Host "  dsh 引擎来源: $($dshSrc.FullName)"
 robocopy $dshSrc.FullName "$portable\runtime\dsh" /E /NFL /NDL /NJH /NJS /NP | Out-Null
 if ($LASTEXITCODE -ge 8) { throw "robocopy 拷贝 dsh 失败" }
 
-Write-Host "== 3/3 拷贝 exe 与配套文件 ==" -ForegroundColor Cyan
-Copy-Item "$workspace\dist\DeepSeekExe.exe" "$portable\" -Force
-Copy-Item "$workspace\build_portable.ps1" "$portable\build_portable.ps1" -Force
+Write-Host "== 3/3 拷贝 exe ==" -ForegroundColor Cyan
+Copy-Item "$Workspace\dist\DeepSeekExe.exe" "$portable\" -Force
 $size = [math]::Round((Get-ChildItem $portable -Recurse -File | Measure-Object Length -Sum).Sum/1MB, 1)
 Write-Host "完成! 便携版: $portable (总大小 $size MB)" -ForegroundColor Green
 Write-Host "把整个文件夹拷到目标电脑, 双击 DeepSeekExe.exe 即可运行"
