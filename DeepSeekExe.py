@@ -21,7 +21,17 @@ from datetime import datetime
 import webview
 
 # ==================== 配置区(可按需修改) ====================
-WORKSPACE = r"C:\Users\asus\Desktop\deepseek"                    # 工作目录 = 本地 git 仓库
+def _app_dir():
+    """exe 所在目录(打包后)或脚本所在目录(源码运行)。"""
+    if getattr(sys, "frozen", False):
+        return os.path.dirname(os.path.abspath(sys.executable))
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+APP_DIR = _app_dir()
+# 工作目录 = 本地 git 仓库: 默认跟随 App 所在目录(便携模式,拷到哪哪就是工作区);
+# 也可用环境变量 DSHEXE_WORKSPACE 指定。
+WORKSPACE = os.environ.get("DSHEXE_WORKSPACE") or APP_DIR
 SESSIONS_SRC = os.path.join(os.environ.get("USERPROFILE", ""), ".dsh", "sessions")
 SESSIONS_DST = os.path.join(WORKSPACE, "sessions")               # 仓库内的会话镜像目录
 # 安全开关: 默认不备份会话(会话日志含 API Key 等敏感信息, 曾导致密钥泄露)。
@@ -31,10 +41,44 @@ REMOTE_URL = "https://github.com/022512db-netizen/deepseekexe.git"
 PORT = int(os.environ.get("DSHEXE_PORT", "3080"))                # 可用环境变量覆盖(测试用)
 WEB_URL = "http://127.0.0.1:%d" % PORT
 BRANCH = "main"
-DSH_ENTRY = r"C:\Users\asus\AppData\Local\npm-cache\_npx\1e7f6d9597241db0\node_modules\@deepseek-ai\dsh\lib\bin.js"
-NODE_BIN = shutil.which("node") or "node"
 START_TIMEOUT_SEC = 90
 WINDOW_W, WINDOW_H = 1280, 860
+
+
+def find_engine():
+    """定位 dsh 引擎,返回 (node可执行, dsh入口js)。
+
+    查找顺序:
+      1. 便携包: App 同级 runtime/node.exe + runtime/dsh/(引擎拷贝)
+      2. 环境变量 DSHEXE_DSH_ENTRY 指向 dsh 的 lib/bin.js
+      3. 本机 npx 缓存(@deepseek-ai/dsh)
+      4. PATH 上的 dsh 命令(返回其 .cmd 路径,启动时用 cmd /c)
+    """
+    # 1. 便携包
+    p_node = os.path.join(APP_DIR, "runtime", "node.exe")
+    p_dsh = os.path.join(APP_DIR, "runtime", "dsh", "node_modules",
+                         "@deepseek-ai", "dsh", "lib", "bin.js")
+    if os.path.isfile(p_node) and os.path.isfile(p_dsh):
+        return p_node, p_dsh
+    # 2. 环境变量
+    env_entry = os.environ.get("DSHEXE_DSH_ENTRY")
+    if env_entry and os.path.isfile(env_entry):
+        return shutil.which("node") or "node", env_entry
+    # 3. 本机 npx 缓存
+    import glob
+    npx_hits = glob.glob(os.path.join(
+        os.path.expanduser("~"), "AppData", "Local", "npm-cache",
+        "_npx", "*", "node_modules", "@deepseek-ai", "dsh", "lib", "bin.js"))
+    if npx_hits:
+        return shutil.which("node") or "node", npx_hits[0]
+    # 4. PATH 上的 dsh 命令
+    dsh_cmd = shutil.which("dsh")
+    if dsh_cmd:
+        return shutil.which("node") or "node", dsh_cmd
+    return None, None
+
+
+NODE_BIN, DSH_ENTRY = find_engine()
 # ============================================================
 
 SPLASH_HTML = """<!DOCTYPE html><html><head><meta charset="utf-8"><style>
@@ -59,9 +103,17 @@ class DeepSeekApp:
         if self._is_web_up():
             self.started_by_us = False
             return
+        if DSH_ENTRY is None:
+            print("未找到 dsh 引擎: 请将 App 放入便携包或安装 dsh", file=sys.stderr)
+            return
         try:
+            if DSH_ENTRY.lower().endswith((".js", ".cjs", ".mjs")):
+                cmd = [NODE_BIN, DSH_ENTRY, "web", "--port", str(PORT)]
+            else:
+                # PATH 上的 dsh 命令(.cmd/.ps1), 经 cmd /c 启动
+                cmd = ["cmd", "/c", DSH_ENTRY, "web", "--port", str(PORT)]
             self.server_proc = subprocess.Popen(
-                [NODE_BIN, DSH_ENTRY, "web", "--port", str(PORT)],
+                cmd,
                 cwd=WORKSPACE,
                 creationflags=subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP,
             )
@@ -191,6 +243,13 @@ class DeepSeekApp:
     # ---------- 事件 ----------
     def on_started(self):
         """GUI 主线程启动后:等待服务器就绪并加载界面。"""
+        if DSH_ENTRY is None:
+            self.window.load_html("<!DOCTYPE html><html><body style='background:#1a1a2e;color:#eee;"
+                                  "font-family:sans-serif;display:flex;align-items:center;"
+                                  "justify-content:center;height:100vh'><h2>未找到 dsh 引擎<br>"
+                                  "<small>请把 App 放到便携包(含 runtime\\ 目录)中,或用 "
+                                  "DSHEXE_DSH_ENTRY 指定 dsh 入口</small></h2></body></html>")
+            return
         if not self._is_web_up():
             self.wait_ready()
         if self._is_web_up():

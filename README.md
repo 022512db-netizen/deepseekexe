@@ -13,11 +13,26 @@ DeepSeek 独立桌面 App(类似 Codex 的独立运行形态)——把 DeepSeek 
 
 ```
 deepseek/
-├── DeepSeekExe.py     # 应用源码(Python 3 + pywebview)
-├── sessions/          # 会话记录镜像(保存时自动同步)
-├── dist/              # 打包产物 DeepSeekExe.exe(不提交到仓库)
+├── DeepSeekExe.py       # 应用源码(Python 3 + pywebview)
+├── build_portable.ps1   # 便携版构建脚本
+├── assets/deepseek.ico  # 鲸鱼图标
+├── dist/                # 打包产物 DeepSeekExe.exe(不提交到仓库)
 └── .gitignore
 ```
+
+## 便携版(可拷贝到其他电脑)
+
+`build_portable.ps1` 生成 `C:\Users\asus\Desktop\DeepSeekExe-portable\`(约 350MB):
+
+```
+DeepSeekExe-portable/
+├── DeepSeekExe.exe    # 双击运行
+├── runtime/           # 内置 node + dsh 引擎(255MB, 不入库)
+└── 使用说明.txt
+```
+
+把整个文件夹拷到任何 Windows 10/11 电脑双击即用——**无需安装 Node.js 和 dsh**。
+目标机仍需:git + GitHub 凭据(用于保存推送)。详见便携版内「使用说明.txt」。
 
 ## 使用方式
 
