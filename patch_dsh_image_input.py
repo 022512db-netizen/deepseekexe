@@ -18,7 +18,7 @@ OLD_FLATTEN = '''function flattenText(blocks) {
 NEW_FLATTEN = '''function flattenText(blocks) {
 \tconst text = blocks.filter((block) => block.type === "text").map((block) => block.text).join("");
 \tif (!contentHasImage(blocks)) return text;
-\treturn `${text}\\n\\n[用户附加了一张图片。当前 DeepSeek 路由不原生识图。请调用全局 claude-vision-skill 的 vision.js --clipboard 获取图片的中文描述，再基于描述回答。]`;
+\treturn `${text}\\n\\n[用户附加了一张图片。当前 DeepSeek 路由不原生识图。可选方案：如用户已配置视觉子代理则交给子代理；否则可调用全局 claude-vision-skill 的 vision.js --clipboard 识图。若视觉模型尚未配置，提醒用户可在 App 菜单“文件 → 视觉模型配置”填写，也可跳过并继续纯文本对话。]`;
 }'''
 
 

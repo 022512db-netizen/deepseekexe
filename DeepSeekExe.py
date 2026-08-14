@@ -138,7 +138,7 @@ class DeepSeekApp:
             self.vision_window.show()
             self.vision_window.restore()
             return
-        self.vision_window = webview.create_window("DeepSeekExe - 视觉模型配置", VISION_CONFIG_HTML, js_api=VisionConfigApi(self), width=610, height=480, resizable=False)
+        self.vision_window = webview.create_window("DeepSeekExe - 视觉模型配置", html=VISION_CONFIG_HTML, js_api=VisionConfigApi(self), width=610, height=480, resizable=False)
         self.vision_window.events.closed += lambda: setattr(self, "vision_window", None)
 
     def start_server(self):
@@ -195,8 +195,6 @@ class DeepSeekApp:
             self.wait_ready()
         if self._is_web_up():
             self.window.load_url(WEB_URL)
-            if not self.vision_configured():
-                self.open_vision_config()
         else:
             self.window.load_html("<h2>引擎启动超时</h2><p>请重新启动 App。</p>")
 
