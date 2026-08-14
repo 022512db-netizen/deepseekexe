@@ -47,6 +47,20 @@ python DeepSeekExe.py
 
 双击 `dist\DeepSeekExe.exe` 即可(单文件,无控制台窗口)。
 
+### 导入 Skill ZIP
+
+在应用菜单选择“文件 -> 导入 Skill ZIP”，然后选择一个 ZIP 包。压缩包必须只有一个顶层 Skill 目录，并且该目录内必须有 `SKILL.md`：
+
+```text
+my-skill.zip
+└── my-skill/
+    ├── SKILL.md
+    └── references/
+        └── guide.md
+```
+
+导入目标为 `~/.dsh/skills/<skill-name>/`。为避免覆盖和路径注入，同名 Skill、包含符号链接或不安全路径的压缩包会被拒绝；导入后新建对话即可加载该 Skill。
+
 ## 重新打包
 
 ```powershell
