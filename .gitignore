@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# PyInstaller 构建产物(不提交到仓库)
+build/
+dist/
+*.spec
+
+# 临时文件
+*.log
+.DS_Store
+Thumbs.db
