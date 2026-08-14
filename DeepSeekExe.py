@@ -194,12 +194,9 @@ class DeepSeekExeApp:
             self.log("")
             self.log("== 1/4 同步会话记录 ==")
             if os.path.isdir(SESSIONS_SRC):
-                os.makedirs(SESSIONS_DST, exist_ok=True)
-                for name in os.listdir(SESSIONS_SRC):
-                    src = os.path.join(SESSIONS_SRC, name)
-                    dst = os.path.join(SESSIONS_DST, name)
-                    if os.path.isfile(src):
-                        shutil.copy2(src, dst)
+                if os.path.isdir(SESSIONS_DST):
+                    shutil.rmtree(SESSIONS_DST)
+                shutil.copytree(SESSIONS_SRC, SESSIONS_DST)
                 self.log("已同步会话目录: %s → %s" % (SESSIONS_SRC, SESSIONS_DST))
             else:
                 self.log("会话目录不存在,跳过: %s" % SESSIONS_SRC)
