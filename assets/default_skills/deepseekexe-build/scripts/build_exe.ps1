@@ -1,4 +1,4 @@
-# ============================================================
+﻿# ============================================================
 # build_exe.ps1 — 只编译 DeepSeekExe.exe
 # 用法: powershell -ExecutionPolicy Bypass -File build_exe.ps1 [-Workspace <源码目录>]
 # 产物: <Workspace>\dist\DeepSeekExe.exe
@@ -15,8 +15,6 @@ python -m PyInstaller --onefile --windowed --name DeepSeekExe `
     --collect-all webview --collect-all pythonnet --collect-all clr_loader `
     --icon "$Workspace\assets\deepseek.ico" `
     --add-data "$Workspace\assets\deepseek.ico;assets" `
-    --add-data "$Workspace\assets\vision_skill;assets\vision_skill" `
-    --add-data "$Workspace\assets\default_skills;assets\default_skills" `
     --distpath "$Workspace\dist" --workpath "$Workspace\build" `
     --specpath "$Workspace" "$Workspace\DeepSeekExe.py"
 if ($LASTEXITCODE -ne 0) { throw "PyInstaller 打包失败" }

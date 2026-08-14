@@ -30,7 +30,9 @@ START_TIMEOUT_SEC = 90
 WINDOW_W, WINDOW_H = 1280, 860
 ICON_PATH = resource_path(os.path.join("assets", "deepseek.ico"))
 VISION_SOURCE = resource_path(os.path.join("assets", "vision_skill"))
+DEFAULT_SKILLS_SOURCE = resource_path(os.path.join("assets", "default_skills"))
 VISION_HOME = os.path.join(os.path.expanduser("~"), ".dsh", "skills", "claude-vision-skill")
+DSH_SKILLS_HOME = os.path.join(os.path.expanduser("~"), ".dsh", "skills")
 
 SPLASH_HTML = """<!DOCTYPE html><html><head><meta charset="utf-8"><style>
 body{margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#1a1a2e;color:#eee;font-family:"Microsoft YaHei",sans-serif}
@@ -97,6 +99,23 @@ class DeepSeekApp:
             with open(example, "w", encoding="utf-8") as handle:
                 handle.write("VISION_BASE_URL=https://jojocode.com/v1\nVISION_MODEL=gpt-5.6-terra\nVISION_API_KEY=replace-with-your-key\n")
 
+    def ensure_default_skills(self):
+        """Install bundled build/update skills once without overwriting user edits."""
+        for skill_name in ("deepseekexe-build", "deepseekexe-update"):
+            source_root = os.path.join(DEFAULT_SKILLS_SOURCE, skill_name)
+            target_root = os.path.join(DSH_SKILLS_HOME, skill_name)
+            if not os.path.isdir(source_root):
+                continue
+            for root, _dirs, files in os.walk(source_root):
+                relative = os.path.relpath(root, source_root)
+                target_dir = target_root if relative == "." else os.path.join(target_root, relative)
+                os.makedirs(target_dir, exist_ok=True)
+                for name in files:
+                    source = os.path.join(root, name)
+                    target = os.path.join(target_dir, name)
+                    if not os.path.isfile(target):
+                        shutil.copy2(source, target)
+
     def vision_configured(self):
         env_path = os.path.join(VISION_HOME, ".env")
         if not os.path.isfile(env_path):
@@ -124,6 +143,7 @@ class DeepSeekApp:
 
     def start_server(self):
         self.ensure_vision_skill()
+        self.ensure_default_skills()
         if self._is_web_up():
             self.started_by_us = False
             return
